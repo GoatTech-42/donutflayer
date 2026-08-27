@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DonutFlayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">D</div>
+        <span class="brand-text">DonutFlayer</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="dashboard">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-tab="bots">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a3 3 0 100 6 3 3 0 000-6zM3 12a5 5 0 0110 0H3z"/></svg>
+          Bots
+        </button>
+        <button class="nav-item" data-tab="servers">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="3" rx="1"/><rect x="2" y="7" width="12" height="3" rx="1"/><rect x="2" y="12" width="12" height="3" rx="1"/></svg>
+          Servers
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="system-stats">
+          <div class="stat-row"><span>Bots</span><span id="s-bot-count">0</span></div>
+          <div class="stat-row"><span>Memory</span><span id="s-memory">0 MB</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <main id="main">
+      <header id="topbar">
+        <div id="page-title">Dashboard</div>
+        <div class="topbar-actions" id="topbar-actions"></div>
+      </header>
+
+      <div id="content">
+        <section id="dashboard-tab" class="tab-content active">
+          <div id="auth-banner" style="display:none"></div>
+          <div class="overview-grid">
+            <div class="overview-card">
+              <div class="overview-label">Active Bots</div>
+              <div class="overview-value" id="ov-bots">0</div>
+            </div>
+            <div class="overview-card">
+              <div class="overview-label">Servers</div>
+              <div class="overview-value" id="ov-servers">0</div>
+            </div>
+            <div class="overview-card">
+              <div class="overview-label">Blocks Mined</div>
+              <div class="overview-value" id="ov-mined">0</div>
+            </div>
+            <div class="overview-card">
+              <div class="overview-label">Total Uptime</div>
+              <div class="overview-value" id="ov-uptime">0m</div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <h3>Recent Activity</h3>
+            </div>
+            <div id="activity-feed" class="activity-feed">
+              <div class="empty-state">No activity yet</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="bots-tab" class="tab-content">
+          <div id="bots-grid" class="bots-grid"></div>
+        </section>
+
+        <section id="servers-tab" class="tab-content">
+          <div id="servers-grid" class="servers-grid"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal-overlay" class="modal-overlay" style="display:none">
+    <div id="modal-container"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
