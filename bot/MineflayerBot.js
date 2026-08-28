@@ -1,4 +1,8 @@
 const mineflayer = require('mineflayer');
+const pathfinder = require('mineflayer-pathfinder');
+const mcData = require('minecraft-data');
+const { Movements, goals } = pathfinder;
+const AUTH_FOLDER = process.env.AUTH_FOLDER || require('path').join(__dirname, '..', 'auth');
 
 class MineflayerBot {
   constructor(id, opts, io) {
@@ -16,6 +20,7 @@ class MineflayerBot {
     this._chatLog = [];
     this._maxChatLog = 200;
     this._authState = null;
+    this._spawned = false;
   }
 
   getStatus() {
@@ -80,7 +85,7 @@ class MineflayerBot {
       this._emit('auth', this._authState);
 
       opts.auth = 'microsoft';
-      opts.profilesFolder = '/opt/donutflayer/auth';
+      opts.profilesFolder = AUTH_FOLDER;
 
       const flow = new Authflow(
         this.opts.username,
@@ -105,13 +110,15 @@ class MineflayerBot {
     }
 
     this.bot = mineflayer.createBot(opts);
+    this.bot.loadPlugin(pathfinder);
 
     this.bot.on('spawn', () => {
       this.connected = true;
       this.status = 'online';
       this._reconnectDelay = 3000;
       this.stats.startTime = Date.now();
-      this.stats.reconnects++;
+      if (this._spawned) this.stats.reconnects++;
+      this._spawned = true;
       this._authState = { status: 'authenticated', flow: 'microsoft' };
       this._emit('auth', this._authState);
       this._log('Connected and spawned');
@@ -215,18 +222,19 @@ class MineflayerBot {
         });
         if (!block) { this._humanWalk(); return; }
 
-        const mcData = require('minecraft-data')(this.bot.version);
-        const { Movements, goals } = require('mineflayer-pathfinder');
-        const movements = new Movements(this.bot, mcData);
+        const data = mcData(this.bot.version);
+        const movements = new Movements(this.bot, data);
         this.bot.pathfinder.setMovements(movements);
         await this.bot.pathfinder.goto(new goals.GoalBlock(block.position.x, block.position.y, block.position.z));
 
         this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), true);
         await this._sleep(150 + Math.random() * 250);
-        await this.bot.dig(block, 'right');
+        await this.bot.dig(block);
         this.stats.blocksMined++;
         this.stats.itemsCollected++;
-      } catch (e) {}
+      } catch (e) {
+        this._log(`Mining error: ${e.message}`, 'warn');
+      }
 
       await this._sleep(400 + Math.random() * 800);
     };
@@ -237,9 +245,8 @@ class MineflayerBot {
   _humanWalk() {
     if (!this.bot || !this.connected) return;
     try {
-      const mcData = require('minecraft-data')(this.bot.version);
-      const { Movements, goals } = require('mineflayer-pathfinder');
-      const movements = new Movements(this.bot, mcData);
+      const data = mcData(this.bot.version);
+      const movements = new Movements(this.bot, data);
       this.bot.pathfinder.setMovements(movements);
 
       const dir = Math.random() * Math.PI * 2;
@@ -247,7 +254,9 @@ class MineflayerBot {
       const x = this.bot.entity.position.x + Math.cos(dir) * dist;
       const z = this.bot.entity.position.z + Math.sin(dir) * dist;
       this.bot.pathfinder.goto(new goals.GoalNear(x, this.bot.entity.position.y, z, 2));
-    } catch (e) {}
+    } catch (e) {
+      this._log(`Walk error: ${e.message}`, 'warn');
+    }
   }
 
   _startAfk() {
@@ -300,9 +309,8 @@ class MineflayerBot {
     );
     if (entity) {
       try {
-        const mcData = require('minecraft-data')(this.bot.version);
-        const { Movements, goals } = require('mineflayer-pathfinder');
-        const movements = new Movements(this.bot, mcData);
+        const data = mcData(this.bot.version);
+        const movements = new Movements(this.bot, data);
         this.bot.pathfinder.setMovements(movements);
         await this.bot.pathfinder.goto(new goals.GoalNear(entity.position.x, entity.position.y, entity.position.z, 2));
         this.bot.mount(entity);

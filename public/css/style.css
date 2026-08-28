@@ -42,6 +42,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .tab-content{display:none}.tab-content.active{display:block}
 
 /* Overview */
+.overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.overview-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.overview-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:8px}
+.overview-value{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-family:var(--mono);line-height:1}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
 .stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:8px}
