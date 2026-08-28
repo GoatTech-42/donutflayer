@@ -454,8 +454,10 @@ function removeServer(id) {
 function formatTime(s) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
   if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${sec}s`;
 }
 
 function esc(str) {

@@ -21,6 +21,7 @@ class MineflayerBot {
     this._maxChatLog = 200;
     this._authState = null;
     this._spawned = false;
+    this._reconnectTimer = null;
   }
 
   getStatus() {
@@ -170,7 +171,7 @@ class MineflayerBot {
   disconnect() {
     this._stopBehaviors();
     if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
-    if (this.bot) { this.bot.removeAllListeners(); this.bot.quit(); this.bot = null; }
+    if (this.bot) { try { this.bot.removeAllListeners(); this.bot.quit(); } catch (_) {} this.bot = null; }
     this.connected = false;
     this.status = 'disconnected';
   }
@@ -208,6 +209,7 @@ class MineflayerBot {
   }
 
   _startMining() {
+    if (this._mineInterval) clearInterval(this._mineInterval);
     this.mode = 'mine';
     this._emit('mode', this.mode);
     this._log('Started mining');
@@ -216,7 +218,7 @@ class MineflayerBot {
       if (!this.bot || !this.connected) return;
       try {
         const block = this.bot.findBlock({
-          matching: (b) => b.name.includes('_ore') || b.name === 'log' || b.name === 'stone',
+          matching: (b) => b.name.endsWith('_ore') || b.name.endsWith('_log') || b.name === 'stone',
           maxDistance: 64,
           count: 1
         });
@@ -260,6 +262,7 @@ class MineflayerBot {
   }
 
   _startAfk() {
+    if (this._afkInterval) clearInterval(this._afkInterval);
     this.mode = 'afk';
     this._emit('mode', this.mode);
     this._log('Started AFK');
@@ -275,6 +278,7 @@ class MineflayerBot {
   }
 
   _startExplore() {
+    if (this._exploreInterval) clearInterval(this._exploreInterval);
     this.mode = 'explore';
     this._emit('mode', this.mode);
     this._log('Started exploring');
