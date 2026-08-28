@@ -4,6 +4,8 @@ const mcData = require('minecraft-data');
 const { Movements, goals } = pathfinder;
 const AUTH_FOLDER = process.env.AUTH_FOLDER || require('path').join(__dirname, '..', 'auth');
 
+const CHAT_MAX_LEN = 256;
+
 class MineflayerBot {
   constructor(id, opts, io) {
     this.id = id;
@@ -22,6 +24,7 @@ class MineflayerBot {
     this._authState = null;
     this._spawned = false;
     this._reconnectTimer = null;
+    this._movements = null;
   }
 
   getStatus() {
@@ -64,6 +67,17 @@ class MineflayerBot {
     if (this._chatLog.length > this._maxChatLog) this._chatLog.shift();
     this._emit('log', entry);
     console.log(`[${this.opts.username}] ${msg}`);
+  }
+
+  _initMovements() {
+    if (!this.bot) return;
+    try {
+      const data = mcData(this.bot.version);
+      this._movements = new Movements(this.bot, data);
+      this.bot.pathfinder.setMovements(this._movements);
+    } catch (e) {
+      this._log(`Movements init failed: ${e.message}`, 'warn');
+    }
   }
 
   connect() {
@@ -124,6 +138,7 @@ class MineflayerBot {
       this._emit('auth', this._authState);
       this._log('Connected and spawned');
       this._emit('status', this.status);
+      this._initMovements();
       this._startBehaviors();
     });
 
@@ -143,9 +158,11 @@ class MineflayerBot {
 
     this.bot.on('message', (jsonMsg) => {
       const text = jsonMsg.toString();
-      this._chatLog.push({ time: new Date().toISOString(), msg: text, type: 'chat' });
-      if (this._chatLog.length > this._maxChatLog) this._chatLog.shift();
       this._emit('chat', { msg: text });
+    });
+
+    this.bot.on('health', () => {
+      this._emit('health', { health: this.bot.health, food: this.bot.food });
     });
 
     this.bot.on('death', () => {
@@ -158,6 +175,7 @@ class MineflayerBot {
     this.connected = false;
     this.status = 'reconnecting';
     this._stopBehaviors();
+    this._movements = null;
     this._emit('status', this.status);
 
     this._reconnectTimer = setTimeout(() => {
@@ -194,7 +212,7 @@ class MineflayerBot {
   }
 
   _humanLook() {
-    if (!this.bot?.entity) return;
+    if (!this.bot?.entity || !this.connected) return;
     const yaw = this.bot.entity.yaw + (Math.random() - 0.5) * 0.3;
     const pitch = (Math.random() - 0.5) * 0.2;
     this.bot.look(yaw, pitch, false);
@@ -224,16 +242,16 @@ class MineflayerBot {
         });
         if (!block) { this._humanWalk(); return; }
 
-        const data = mcData(this.bot.version);
-        const movements = new Movements(this.bot, data);
-        this.bot.pathfinder.setMovements(movements);
+        if (!this._movements) this._initMovements();
         await this.bot.pathfinder.goto(new goals.GoalBlock(block.position.x, block.position.y, block.position.z));
 
-        this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), true);
-        await this._sleep(150 + Math.random() * 250);
-        await this.bot.dig(block);
-        this.stats.blocksMined++;
-        this.stats.itemsCollected++;
+        const targetBlock = this.bot.blockAt(block.position);
+        if (targetBlock && targetBlock.name === block.name) {
+          this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), true);
+          await this.bot.dig(targetBlock);
+          this.stats.blocksMined++;
+          this.stats.itemsCollected++;
+        }
       } catch (e) {
         this._log(`Mining error: ${e.message}`, 'warn');
       }
@@ -245,17 +263,14 @@ class MineflayerBot {
   }
 
   _humanWalk() {
-    if (!this.bot || !this.connected) return;
+    if (!this.bot || !this.connected || !this.bot.entity) return;
     try {
-      const data = mcData(this.bot.version);
-      const movements = new Movements(this.bot, data);
-      this.bot.pathfinder.setMovements(movements);
-
+      if (!this._movements) this._initMovements();
       const dir = Math.random() * Math.PI * 2;
       const dist = 3 + Math.random() * 8;
       const x = this.bot.entity.position.x + Math.cos(dir) * dist;
       const z = this.bot.entity.position.z + Math.sin(dir) * dist;
-      this.bot.pathfinder.goto(new goals.GoalNear(x, this.bot.entity.position.y, z, 2));
+      this.bot.pathfinder.goto(new goals.GoalNear(x, this.bot.entity.position.y, z, 2)).catch(() => {});
     } catch (e) {
       this._log(`Walk error: ${e.message}`, 'warn');
     }
@@ -301,7 +316,11 @@ class MineflayerBot {
         this._emit('mode', this.mode);
         this._log('Stopped');
         break;
-      case 'chat': this.bot.chat(params.message || ''); break;
+      case 'chat': {
+        const msg = String(params.message || '').slice(0, CHAT_MAX_LEN);
+        if (msg) this.bot.chat(msg);
+        break;
+      }
       case 'mount': this._mountNearest(); break;
       case 'dismount': if (this.bot.riding) this.bot.dismount(); break;
     }
@@ -313,9 +332,7 @@ class MineflayerBot {
     );
     if (entity) {
       try {
-        const data = mcData(this.bot.version);
-        const movements = new Movements(this.bot, data);
-        this.bot.pathfinder.setMovements(movements);
+        if (!this._movements) this._initMovements();
         await this.bot.pathfinder.goto(new goals.GoalNear(entity.position.x, entity.position.y, entity.position.z, 2));
         this.bot.mount(entity);
         this._log(`Mounted ${entity.name}`);

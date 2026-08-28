@@ -19,7 +19,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 /* Sidebar */
 #sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
 .sidebar-brand{display:flex;align-items:center;gap:12px;padding:20px 16px 28px}
-.brand-icon{width:32px;height:32px;background:var(--accent);color:#fff;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.brand-icon{width:32px;height:32px;border-radius:var(--radius);flex-shrink:0}
 .brand-text{font-weight:700;font-size:15px;letter-spacing:-0.02em}
 .sidebar-nav{flex:1;padding:0 8px}
 .nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;background:none;color:var(--text2);font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;border-radius:var(--radius);transition:all 0.15s;text-align:left;margin-bottom:2px}
