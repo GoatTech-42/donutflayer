@@ -132,12 +132,21 @@ class MineflayerBot {
       this.stats.startTime = Date.now()
       if (this._spawned) this.stats.reconnects++
       this._spawned = true
-      this._authState = { status: 'authenticated', flow: 'microsoft' }
+      this._authState = { status: 'authenticated', flow: this.opts.auth }
       this._emit('auth', this._authState)
       this._log('Connected and spawned')
       this._emit('status', this.status)
       this._initMovements()
       this._startBehaviors()
+      // Prismarine viewer: attach a web viewer on demand (lazy, no hard dep failure)
+      try {
+        const viewer = require('prismarine-viewer').mineflayer
+        viewer(this.bot, { port: 0, firstPerson: false })
+        this._viewerReady = true
+        this._log('Viewer ready')
+      } catch (e) {
+        this._log(`Viewer not available: ${e.message}`, 'warn')
+      }
     })
 
     this.bot.on('kicked', reason => {

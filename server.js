@@ -34,16 +34,24 @@ io.on('connection', socket => {
 
   socket.on('bot:create', async data => {
     try {
-      const id = await manager.createBot(data)
-      socket.emit('bot:created', { id, ...data })
+      if (!data.username || !String(data.username).trim())
+        return socket.emit('bot:error', { error: 'Username required' })
+      if (!['microsoft', 'offline'].includes(data.auth)) data.auth = 'microsoft'
+      const id = await manager.createBot({
+        username: String(data.username).trim().slice(0, 16),
+        serverId: data.serverId,
+        auth: data.auth
+      })
+      io.emit('bot:created', { id })
     } catch (err) {
       socket.emit('bot:error', { error: err.message })
+      io.emit('bot:error', { error: err.message })
     }
   })
 
   socket.on('bot:remove', data => {
     manager.removeBot(data.id)
-    socket.emit('bot:removed', { id: data.id })
+    io.emit('bot:removed', { id: data.id })
   })
 
   socket.on('bot:action', data => {
