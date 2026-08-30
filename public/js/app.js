@@ -5,6 +5,7 @@ socket.on('init', data => {
   state.servers = data.servers || []
   state.bots = data.bots || []
   renderAll()
+  bindQuickLogin()
 })
 
 socket.on('bot:event', data => {
@@ -115,12 +116,12 @@ function switchTab(tab) {
   }
 }
 
+// Bind the dashboard quick-login form submit handler immediately,
+// even before the socket 'init' event arrives.
+bindQuickLogin()
+
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab))
-})
-      actions.innerHTML = ''
-    }
-  })
 })
 
 function renderAll() {
@@ -501,39 +502,33 @@ function removeBot(id) {
   closeModal()
 }
 
-function openAddBot() {
-  // Hook quick-login: allow login directly via the UI without terminal device-code copy/paste
+function bindQuickLogin() {
   const qForm = document.getElementById('quick-login-form')
-  if (qForm && !qForm._bound) {
-    qForm._bound = true
-    qForm.addEventListener('submit', e => {
-      e.preventDefault()
-      const u = document.getElementById('quick-username').value.trim()
-      const sid = document.getElementById('quick-server').value
-      const auth = document.getElementById('quick-auth').value
-      if (!u) return
-      const btn = qForm.querySelector('button[type=submit]')
-      const hint = document.getElementById('quick-login-hint')
-      if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Connecting…' }
-      if (hint) hint.textContent = 'Connecting — device-code will appear above if Microsoft auth is required.'
-      socket.emit('bot:create', { username: u, serverId: sid, auth })
-      const unlock = () => {
-        if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'Connect' }
-      }
-      socket.once('bot:created', unlock)
-      socket.once('bot:error', unlock)
-    })
-    const updQuickServers = () => {
-      const sel = document.getElementById('quick-server')
-      if (sel)
-        sel.innerHTML = state.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+  if (!qForm || qForm._bound) return
+  qForm._bound = true
+  qForm.addEventListener('submit', e => {
+    e.preventDefault()
+    const u = document.getElementById('quick-username').value.trim()
+    const sid = document.getElementById('quick-server').value
+    const auth = document.getElementById('quick-auth').value
+    if (!u) return
+    const btn = qForm.querySelector('button[type=submit]')
+    const hint = document.getElementById('quick-login-hint')
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Connecting…' }
+    if (hint) hint.textContent = 'Connecting — device-code will appear above if Microsoft auth is required.'
+    socket.emit('bot:create', { username: u, serverId: sid, auth })
+    const unlock = () => {
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'Connect' }
     }
-    const origRenderAll = typeof renderAll === 'function' ? renderAll : null
-    if (origRenderAll) {
-      /* keep original renderAll — quick-login select re-renders via socket init */
-    }
-  }
-  const serverOpts = state.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+    socket.once('bot:created', unlock)
+    socket.once('bot:error', unlock)
+  })
+}
+
+function openAddBot() {
+  // Re-bind in case this is called after DOM swap
+  bindQuickLogin()
+  const qForm = document.getElementById('quick-login-form')
 
   document.getElementById('modal-container').innerHTML = `
     <div class="modal-box">
