@@ -1,191 +1,165 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="DonutFlayer — Minecraft bot manager with Microsoft auth, viewer, and real-time controls."
-    />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="DonutFlayer — Minecraft bot dashboard with Microsoft auth, viewer, and real-time controls." />
     <meta name="theme-color" content="#141414" />
     <meta property="og:title" content="DonutFlayer — Minecraft Bot Dashboard" />
-    <meta
-      property="og:description"
-      content="Manage Mineflayer bots with a clean web dashboard. Microsoft auth, viewer, auto-reconnect, mining, AFK, explore."
-    />
+    <meta property="og:description" content="Manage Mineflayer bots with a clean web dashboard. Microsoft auth, viewer, auto-reconnect, mining, AFK, explore." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/donutflayer-logo.png" />
     <title>DonutFlayer</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/css/style.css?v=5" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css?v=6" />
   </head>
   <body>
-    <div id="app">
-      <aside id="sidebar">
-        <div class="sidebar-brand">
-          <svg class="brand-icon" viewBox="0 0 36 36" width="32" height="32">
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <svg viewBox="0 0 36 36" width="36" height="36">
             <defs>
               <linearGradient id="bg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
                 <stop offset="0%" stop-color="#5563d1" />
                 <stop offset="100%" stop-color="#404ebf" />
               </linearGradient>
             </defs>
-            <rect width="36" height="36" rx="9" fill="url(#bg)" />
+            <rect width="36" height="36" rx="10" fill="url(#bg)" />
             <rect x="17" y="7" width="2.8" height="22" rx="1" fill="white" />
             <rect x="8.5" y="7.5" width="19" height="3" rx="1" fill="white" />
             <path d="M6 9 L8.5 7.5 L8.5 10.5 Z" fill="white" />
             <path d="M30 9 L27.5 7.5 L27.5 10.5 Z" fill="white" />
           </svg>
-          <span class="brand-text">DonutFlayer</span>
-        </div>
-        <nav class="sidebar-nav">
-          <button class="nav-item active" data-tab="dashboard">Dashboard</button>
-          <button class="nav-item" data-tab="bots">Bots</button>
-          <button class="nav-item" data-tab="servers">Servers</button>
-          <button class="nav-item" data-tab="playground">Playground</button>
-        </nav>
-        <div class="sidebar-footer">
-          <div class="system-stats">
-            <div class="stat-row"><span>Bots</span><span id="s-bot-count">0</span></div>
-            <div class="stat-row"><span>Memory</span><span id="s-memory">0 MB</span></div>
+          <div>
+            <b>DonutFlayer</b>
+            <small>Minecraft bots</small>
           </div>
-          <button id="create-bot-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px">
-            + New bot
-          </button>
+        </div>
+
+        <nav>
+          <p class="nav-label">Bot</p>
+          <button class="nav-link active" data-view="dashboard">Dashboard</button>
+          <button class="nav-link" data-view="bots">Bots</button>
+          <button class="nav-link" data-view="servers">Servers</button>
+
+          <p class="nav-label">Play</p>
+          <button class="nav-link" data-view="playground">Playground</button>
+        </nav>
+
+        <div class="status-card">
+          <div class="status-row">
+            <span><i class="dot"></i>Source</span>
+            <b id="source-label">—</b>
+          </div>
+          <p id="source-note">Connecting…</p>
+          <div class="status-row"><span>Bots</span><b id="s-bot-count">0</b></div>
+          <div class="status-row"><span>Memory</span><b id="s-memory">—</b></div>
+          <button id="create-bot-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px">+ New bot</button>
         </div>
       </aside>
 
-      <main id="main">
-        <header id="topbar">
-          <div id="page-title">Dashboard</div>
-          <div class="topbar-actions" id="topbar-actions">
+      <main>
+        <header class="topbar">
+          <button id="menu-button">☰</button>
+          <div class="topbar-title">
+            <span id="page-eyebrow" class="eyebrow">Bot</span>
+            <h1 id="page-title">Dashboard</h1>
+          </div>
+          <div class="topbar-actions">
+            <span id="feed-status" class="pill">—</span>
             <button id="top-refresh" class="btn">Refresh</button>
           </div>
         </header>
 
-        <div id="content">
-          <!-- DASHBOARD -->
-          <section id="dashboard-tab" class="tab-content active">
-            <div id="auth-banner" style="display: none"></div>
-            <div id="login-card" class="card">
-              <h3>Log in</h3>
-              <p style="color: var(--text2); margin-bottom: 12px">
-                Create a bot via the UI — no terminal needed. Microsoft device-code flow happens in the
-                browser.
-              </p>
-              <form id="quick-login-form">
-                <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                  <input
-                    id="quick-username"
-                    placeholder="Minecraft username"
-                    required
-                    style="flex: 1; min-width: 160px"
-                  />
-                  <select id="quick-server" style="min-width: 140px"></select>
-                  <select id="quick-auth">
-                    <option value="microsoft">Microsoft</option>
-                    <option value="offline">Offline</option>
-                  </select>
-                  <button class="btn btn-primary" type="submit">Connect</button>
-                </div>
-                <p id="quick-login-hint" style="margin-top: 8px; font-size: 12px; color: var(--text2)"></p>
-              </form>
-            </div>
-            <div class="overview-grid" style="margin-top: 14px">
-              <div class="overview-card">
-                <div class="overview-label">Active Bots</div>
-                <div class="overview-value" id="ov-bots">0</div>
+        <!-- DASHBOARD -->
+        <section id="view-dashboard" class="view active" data-view="dashboard">
+          <div id="auth-banner" style="display: none"></div>
+          <div class="card">
+            <header>
+              <div>
+                <span class="eyebrow">Log in</span>
+                <strong>Connect a bot</strong>
               </div>
-              <div class="overview-card">
-                <div class="overview-label">Servers</div>
-                <div class="overview-value" id="ov-servers">0</div>
-              </div>
-              <div class="overview-card">
-                <div class="overview-label">Blocks Mined</div>
-                <div class="overview-value" id="ov-mined">0</div>
-              </div>
-              <div class="overview-card">
-                <div class="overview-label">Total Uptime</div>
-                <div class="overview-value" id="ov-uptime">0m</div>
-              </div>
-            </div>
-            <div class="section" style="margin-top: 14px">
-              <div class="section-header"><h3>Recent Activity</h3></div>
-              <div id="activity-feed" class="activity-feed">
-                <div class="empty-state">No activity yet</div>
-              </div>
-            </div>
-          </section>
+              <button id="auth-refresh" class="btn-small">Refresh</button>
+            </header>
+            <p style="color: var(--text2); margin-bottom: 12px; font-size: 13px">Create a bot via the UI. Microsoft device-code flow happens in the browser — no terminal required.</p>
+            <form id="quick-login-form" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px">
+              <input id="quick-username" type="text" placeholder="Minecraft username" required style="flex: 1; min-width: 160px" />
+              <select id="quick-server" style="min-width: 140px"></select>
+              <select id="quick-auth">
+                <option value="microsoft">Microsoft</option>
+                <option value="offline">Offline</option>
+              </select>
+              <button class="btn btn-primary" type="submit">Connect</button>
+            </form>
+            <p id="quick-login-hint" style="margin-top: 4px; font-size: 12px; color: var(--text2)"></p>
+          </div>
 
-          <!-- BOTS LIST -->
-          <section id="bots-tab" class="tab-content">
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 12px">
-              <button id="bots-new-btn" class="btn btn-primary">+ New bot</button>
-            </div>
-            <div id="bots-grid" class="bots-grid"></div>
-          </section>
+          <div class="metric-grid" style="margin-top: 14px">
+            <div class="metric-card"><span class="label">Active bots</span><strong id="ov-bots">0</strong><small>online now</small></div>
+            <div class="metric-card"><span class="label">Servers</span><strong id="ov-servers">0</strong><small>configured</small></div>
+            <div class="metric-card"><span class="label">Blocks mined</span><strong id="ov-mined">0</strong><small>total</small></div>
+            <div class="metric-card"><span class="label">Total uptime</span><strong id="ov-uptime">0m</strong><small>cumulative</small></div>
+          </div>
 
-          <!-- SERVERS -->
-          <section id="servers-tab" class="tab-content">
-            <div id="servers-grid" class="servers-grid"></div>
-          </section>
+          <div class="card" style="margin-top: 14px">
+            <header>
+              <div>
+                <span class="eyebrow">Activity</span>
+                <strong>Recent events</strong>
+              </div>
+            </header>
+            <div id="activity-feed" class="list"><div class="placeholder">No activity yet.</div></div>
+          </div>
+        </section>
 
-          <!-- PLAYGROUND / VIEWER -->
-          <section id="playground-tab" class="tab-content">
-            <div class="card">
-              <h3>3D Viewer</h3>
-              <p style="color: var(--text2); margin-bottom: 10px">
-                Prismarine viewer + third-person follow. Pick a bot on the Bots tab and click "Open".
-              </p>
-              <div
-                id="viewer-root"
-                style="
-                  height: 420px;
-                  border: 1px solid var(--border);
-                  border-radius: 8px;
-                  background: #0a0a0a;
-                  display: grid;
-                  place-items: center;
-                  color: var(--text2);
-                "
-              >
-                No bot selected — open from Bots.
-              </div>
+        <!-- BOTS -->
+        <section id="view-bots" class="view" data-view="bots">
+          <div class="page-header">
+            <span class="eyebrow">Bot</span>
+            <h2>Bots</h2>
+            <p>All active and recent Mineflayer instances.</p>
+          </div>
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 12px">
+            <button id="bots-new-btn" class="btn btn-primary">+ New bot</button>
+          </div>
+          <div id="bots-grid" class="bots-grid"></div>
+        </section>
+
+        <!-- SERVERS -->
+        <section id="view-servers" class="view" data-view="servers">
+          <div class="page-header">
+            <span class="eyebrow">Bot</span>
+            <h2>Servers</h2>
+            <p>Server profiles bots can connect to.</p>
+          </div>
+          <div id="servers-grid" class="servers-grid"></div>
+        </section>
+
+        <!-- PLAYGROUND -->
+        <section id="view-playground" class="view" data-view="playground">
+          <div class="page-header">
+            <span class="eyebrow">Play</span>
+            <h2>Playground</h2>
+            <p>Prismarine viewer, mode controls, chat — opens when you tap a bot.</p>
+          </div>
+          <div class="card" style="min-height: 360px; display: grid; place-items: center">
+            <div class="placeholder" style="text-align: center">
+              <strong style="display: block; margin-bottom: 6px; font-size: 16px">Pick a bot to drive</strong>
+              Open the <em>Bots</em> tab and tap a card to open the playground for that bot.
             </div>
-            <div class="card" style="margin-top: 12px">
-              <h3>Controls</h3>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                <button class="btn" data-viewer-action="forward">Forward</button>
-                <button class="btn" data-viewer-action="left">Left</button>
-                <button class="btn" data-viewer-action="back">Back</button>
-                <button class="btn" data-viewer-action="right">Right</button>
-                <button class="btn" data-viewer-action="jump">Jump</button>
-                <button class="btn" data-viewer-action="sneak">Sneak</button>
-                <button class="btn" data-viewer-action="sprint">Sprint</button>
-                <button class="btn btn-primary" data-viewer-action="stop">Stop</button>
-              </div>
-              <div style="display: flex; gap: 8px; margin-top: 10px">
-                <input id="chat-input" placeholder="Send chat as selected bot…" style="flex: 1" />
-                <button id="chat-send" class="btn btn-primary">Send</button>
-              </div>
-            </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </main>
     </div>
 
-    <!-- BOT MODAL (also serves as fullscreen stage) -->
-    <div id="modal-overlay" class="modal-overlay" style="display: none">
-      <div id="modal-container"></div>
-    </div>
+    <div id="bot-fullscreen"></div>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/app.js?v=5"></script>
+    <script src="/js/app.js?v=6"></script>
   </body>
 </html>

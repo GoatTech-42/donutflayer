@@ -1110,3 +1110,307 @@ td b {
     box-shadow: 0 0 16px rgba(64, 78, 191, 0.3);
   }
 }
+
+/* ============ DonutFlayer bot-specific (on top of Cosmos shell) ============ */
+.bots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.servers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.bot-card,
+.server-card {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.bot-card:hover,
+.server-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+.bot-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bot-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.bot-card-server {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-family: var(--mono);
+}
+.bot-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.bot-stat {
+  min-width: 0;
+}
+.bot-stat-label {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.bot-stat-value {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+}
+.bot-card-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.bot-card-actions .btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Fullscreen playground */
+.bot-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(14, 14, 16, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px;
+}
+.bot-fullscreen-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.bot-fullscreen-head b {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.bot-fullscreen-head .btn {
+  margin-left: auto;
+}
+.bot-fullscreen-body {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 16px;
+  margin-top: 16px;
+  flex: 1;
+  min-height: 0;
+}
+.bot-fullscreen-left,
+.bot-fullscreen-right {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.bot-fullscreen-left {
+  gap: 0;
+}
+@media (max-width: 900px) {
+  .bot-fullscreen-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+}
+
+/* Auth banner */
+.auth-banner {
+  background: rgba(64, 78, 191, 0.1);
+  border: 1px solid rgba(64, 78, 191, 0.35);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.auth-banner .card {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.auth-code-value {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: 7px;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow);
+}
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow);
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.modal-body {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal-foot {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.modal-close-btn {
+  background: transparent;
+  border: 0;
+  color: var(--text2);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.form-label {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.form-input,
+.form-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+}
+.form-input:focus,
+.form-select:focus {
+  border-color: var(--accent);
+}
+
+/* Chat */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 120px;
+}
+.chat-msg {
+  padding: 2px 0;
+  word-break: break-word;
+}
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.chat-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+.chat-send {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
