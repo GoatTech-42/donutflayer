@@ -123,7 +123,9 @@ class MineflayerBot {
     }
 
     this.bot = mineflayer.createBot(opts)
-    this.bot.loadPlugin(pathfinder)
+    // mineflayer-pathfinder v2 exports { pathfinder, Movements, goals } — the plugin
+    // function is under `.pathfinder`, not the module itself.
+    this.bot.loadPlugin(pathfinder.pathfinder)
 
     this.bot.on('spawn', () => {
       this.connected = true
@@ -368,6 +370,26 @@ class MineflayerBot {
       case 'dismount':
         if (this.bot.riding) this.bot.dismount()
         break
+      case 'move': {
+        // WASD / jump / sneak / sprint — sets a control state for ~150ms.
+        // These map to the playground's movement buttons and are harmless no-ops
+        // when the pathfinder is busy (mine/explore), since it overwrites movement.
+        const dir = String(params.dir || '').toLowerCase()
+        const state = {
+          forward: 'forward',
+          back: 'back',
+          left: 'left',
+          right: 'right',
+          jump: 'jump',
+          sneak: 'sneak',
+          sprint: 'sprint'
+        }[dir]
+        if (state) {
+          this.bot.setControlState(state, true)
+          setTimeout(() => this.bot.setControlState(state, false), 180)
+        }
+        break
+      }
     }
   }
 

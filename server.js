@@ -33,6 +33,14 @@ app.get('/api/health', (req, res) => {
   })
 })
 
+app.get('/api/bots', (req, res) => {
+  res.json({ bots: manager.getBots().map(b => b.getStatus()), servers: manager.getServers() })
+})
+
+app.get('/api/servers', (req, res) => {
+  res.json({ servers: manager.getServers() })
+})
+
 io.on('connection', socket => {
   console.log(`[Dashboard] Client connected: ${socket.id}`)
 
@@ -52,7 +60,8 @@ io.on('connection', socket => {
         serverId: data.serverId,
         auth: data.auth
       })
-      io.emit('bot:created', { id })
+      const bot = manager.getBot(id)
+      io.emit('bot:created', bot ? bot.getStatus() : { id })
     } catch (err) {
       socket.emit('bot:error', { error: err.message })
       io.emit('bot:error', { error: err.message })
