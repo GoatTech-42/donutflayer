@@ -22,6 +22,7 @@ socket.on('bot:event', data => {
       bot.authState = data.data
       if (data.data.status === 'auth_required') {
         showAuthBanner(data.data, bot.username)
+        switchTab('dashboard')
       } else if (data.data.status === 'authenticated') {
         hideAuthBanner()
         addActivity(`Authenticated: ${bot.username}`)
@@ -91,25 +92,32 @@ socket.on('server:removed', data => {
 
 socket.on('bot:error', data => {
   addActivity(`Error: ${data.error}`, 'error')
+  switchTab('dashboard')
 })
 
 // Tabs
-document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'))
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
-    btn.classList.add('active')
-    const tab = btn.dataset.tab
-    document.getElementById(tab + '-tab').classList.add('active')
-    document.getElementById('page-title').textContent =
-      tab === 'dashboard' ? 'Dashboard' : tab === 'bots' ? 'Bots' : 'Servers'
+function switchTab(tab) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+  const btn = document.querySelector(`.nav-item[data-tab="${tab}"]`)
+  if (btn) btn.classList.add('active')
+  const target = document.getElementById(tab + '-tab')
+  if (target) target.classList.add('active')
+  document.getElementById('page-title').textContent =
+    tab === 'dashboard' ? 'Dashboard' : tab === 'bots' ? 'Bots' : tab === 'servers' ? 'Servers' : tab === 'playground' ? 'Playground' : 'DonutFlayer'
+  const actions = document.getElementById('topbar-actions')
+  if (tab === 'bots') {
+    actions.innerHTML = '<button class="btn btn-primary" onclick="openAddBot()">+ Add Bot</button>'
+  } else if (tab === 'servers') {
+    actions.innerHTML = '<button class="btn btn-primary" onclick="openAddServer()">+ Add Server</button>'
+  } else {
+    actions.innerHTML = ''
+  }
+}
 
-    const actions = document.getElementById('topbar-actions')
-    if (tab === 'bots') {
-      actions.innerHTML = '<button class="btn btn-primary" onclick="openAddBot()">+ Add Bot</button>'
-    } else if (tab === 'servers') {
-      actions.innerHTML = '<button class="btn btn-primary" onclick="openAddServer()">+ Add Server</button>'
-    } else {
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab))
+})
       actions.innerHTML = ''
     }
   })
@@ -504,9 +512,16 @@ function openAddBot() {
       const sid = document.getElementById('quick-server').value
       const auth = document.getElementById('quick-auth').value
       if (!u) return
-      socket.emit('bot:create', { username: u, serverId: sid, auth })
+      const btn = qForm.querySelector('button[type=submit]')
       const hint = document.getElementById('quick-login-hint')
+      if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Connecting…' }
       if (hint) hint.textContent = 'Connecting — device-code will appear above if Microsoft auth is required.'
+      socket.emit('bot:create', { username: u, serverId: sid, auth })
+      const unlock = () => {
+        if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'Connect' }
+      }
+      socket.once('bot:created', unlock)
+      socket.once('bot:error', unlock)
     })
     const updQuickServers = () => {
       const sel = document.getElementById('quick-server')
