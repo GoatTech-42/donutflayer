@@ -509,3 +509,19 @@ function esc(str) {
   d.textContent = String(str)
   return d.innerHTML
 }
+
+// Auto-refresh dashboard while idle — matches tracker
+setInterval(() => {
+  if (document.hidden) return
+  fetch('/api/health')
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => d && typeof renderAll === 'function' && renderAll())
+    .catch(() => {})
+}, 45000)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden)
+    fetch('/api/health')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d && renderAll())
+      .catch(() => {})
+})
