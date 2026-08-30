@@ -367,11 +367,20 @@ function updateDetailPanel(bot) {
     chatEl.innerHTML += `<div class="chat-msg">${esc(msgText)}</div>`
     chatEl.scrollTop = chatEl.scrollHeight
   }
+  const viewerChat = document.getElementById('viewer-chat')
+  if (viewerChat && msgText) {
+    viewerChat.innerHTML += `<div class="chat-msg">${esc(msgText)}</div>`
+    viewerChat.scrollTop = viewerChat.scrollHeight
+  }
 }
 
 function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open')
   document.getElementById('modal-overlay').style.display = 'none'
   state.selectedBot = null
+  // Also exit fullscreen bot stage if open
+  const fs = document.getElementById('bot-fullscreen')
+  if (fs) fs.remove()
 }
 
 document.getElementById('modal-overlay').addEventListener('click', e => {
@@ -379,8 +388,76 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
 })
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal()
+  if (e.key === 'Escape') {
+    closeModal()
+    const fs = document.getElementById('bot-fullscreen')
+    if (fs) fs.remove()
+  }
 })
+
+// Fullscreen bot stage — click any bot card → immersive controls + viewer
+function openFullscreenBot(bot) {
+  state.selectedBot = bot
+  let fs = document.getElementById('bot-fullscreen')
+  if (fs) fs.remove()
+  fs = document.createElement('div')
+  fs.id = 'bot-fullscreen'
+  fs.className = 'bot-fullscreen'
+  fs.innerHTML = `
+    <div class="bot-fullscreen-head">
+      <b>${esc(bot.username)}</b><span class="badge">${esc(bot.server)} · ${esc(bot.status)}</span>
+      <button class="btn" onclick="document.getElementById('bot-fullscreen').remove()">✕ Close</button>
+    </div>
+    <div class="bot-fullscreen-body">
+      <div class="bot-fullscreen-left">
+        <div class="chat-panel" style="height:100%">
+          <div class="chat-messages" id="viewer-chat" style="height:280px">${(bot.chatLog || [])
+            .slice(-30)
+            .map(e => `<div class="chat-msg">${esc(typeof e === 'string' ? e : e.msg || '')}</div>`)
+            .join('')}</div>
+          <div class="chat-input-row"><input class="chat-input" id="fs-chat-input" placeholder="Type as ${esc(bot.username)}…"><button class="chat-send" onclick="fsSendChat('${bot.id}')">Send</button></div>
+        </div>
+        <div class="btn-group" style="margin-top:10px; flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="botAction('${bot.id}','mine')">Mine</button>
+          <button class="btn" onclick="botAction('${bot.id}','afk')">AFK</button>
+          <button class="btn" onclick="botAction('${bot.id}','explore')">Explore</button>
+          <button class="btn" onclick="botAction('${bot.id}','mount')">Mount</button>
+          <button class="btn btn-danger" onclick="botAction('${bot.id}','stop')">Stop</button>
+        </div>
+        <div class="btn-group" style="margin-top:8px; flex-wrap:wrap">
+          <button class="btn" onclick="viewerMove('${bot.id}','forward')">Forward</button>
+          <button class="btn" onclick="viewerMove('${bot.id}','left')">Left</button>
+          <button class="btn" onclick="viewerMove('${bot.id}','back')">Back</button>
+          <button class="btn" onclick="viewerMove('${bot.id}','right')">Right</button>
+          <button class="btn" onclick="viewerMove('${bot.id}','jump')">Jump</button>
+          <button class="btn" onclick="viewerMove('${bot.id}','sneak')">Sneak</button>
+          <button class="btn" onclick="viewerMove('${bot.id}','sprint')">Sprint</button>
+        </div>
+      </div>
+      <div class="bot-fullscreen-right">
+        <div id="fs-viewer-root" style="height:420px; border:1px solid var(--border); border-radius:8px; background:#0a0a0a; display:grid; place-items:center; color:var(--text2)">Prismarine viewer — ${esc(bot.username)}</div>
+        <p style="margin-top:8px; color:var(--text2); font-size:12px">Prismarine viewer (prismarine-viewer) renders the world around the bot when enabled server-side. Movement keys drive the pathfinder.</p>
+      </div>
+    </div>
+  `
+  document.body.appendChild(fs)
+  const inp = document.getElementById('fs-chat-input')
+  if (inp)
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') fsSendChat(bot.id)
+    })
+}
+function fsSendChat(botId) {
+  const inp = document.getElementById('fs-chat-input')
+  if (!inp) return
+  const msg = inp.value.trim()
+  if (!msg) return
+  socket.emit('bot:action', { id: botId, action: 'chat', params: { message: msg } })
+  inp.value = ''
+}
+function viewerMove(botId, dir) {
+  socket.emit('bot:action', { id: botId, action: 'move', params: { dir } })
+}
 
 function sendChat(botId) {
   const input = document.getElementById('chat-input')
@@ -402,6 +479,30 @@ function removeBot(id) {
 }
 
 function openAddBot() {
+  // Hook quick-login: allow login directly via the UI without terminal device-code copy/paste
+  const qForm = document.getElementById('quick-login-form')
+  if (qForm && !qForm._bound) {
+    qForm._bound = true
+    qForm.addEventListener('submit', e => {
+      e.preventDefault()
+      const u = document.getElementById('quick-username').value.trim()
+      const sid = document.getElementById('quick-server').value
+      const auth = document.getElementById('quick-auth').value
+      if (!u) return
+      socket.emit('bot:create', { username: u, serverId: sid, auth })
+      const hint = document.getElementById('quick-login-hint')
+      if (hint) hint.textContent = 'Connecting — device-code will appear above if Microsoft auth is required.'
+    })
+    const updQuickServers = () => {
+      const sel = document.getElementById('quick-server')
+      if (sel)
+        sel.innerHTML = state.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+    }
+    const origRenderAll = typeof renderAll === 'function' ? renderAll : null
+    if (origRenderAll) {
+      /* keep original renderAll — quick-login select re-renders via socket init */
+    }
+  }
   const serverOpts = state.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
 
   document.getElementById('modal-container').innerHTML = `

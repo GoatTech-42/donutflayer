@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Web-based Minecraft bot manager with Microsoft auth, multi-server support, and real-time dashboard."
+      content="DonutFlayer — Minecraft bot manager with Microsoft auth, viewer, and real-time controls."
     />
-    <meta name="theme-color" content="#0c0e14" />
+    <meta name="theme-color" content="#141414" />
     <meta property="og:title" content="DonutFlayer — Minecraft Bot Dashboard" />
     <meta
       property="og:description"
-      content="Manage Mineflayer bots with a clean web dashboard. Microsoft auth, auto-reconnect, mining, AFK, and explore modes."
+      content="Manage Mineflayer bots with a clean web dashboard. Microsoft auth, viewer, auto-reconnect, mining, AFK, explore."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/donutflayer-logo.png" />
@@ -45,48 +45,59 @@
           <span class="brand-text">DonutFlayer</span>
         </div>
         <nav class="sidebar-nav">
-          <button class="nav-item active" data-tab="dashboard">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="1" y="1" width="6" height="6" rx="1" />
-              <rect x="9" y="1" width="6" height="6" rx="1" />
-              <rect x="1" y="9" width="6" height="6" rx="1" />
-              <rect x="9" y="9" width="6" height="6" rx="1" />
-            </svg>
-            Dashboard
-          </button>
-          <button class="nav-item" data-tab="bots">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1a3 3 0 100 6 3 3 0 000-6zM3 12a5 5 0 0110 0H3z" />
-            </svg>
-            Bots
-          </button>
-          <button class="nav-item" data-tab="servers">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="2" y="2" width="12" height="3" rx="1" />
-              <rect x="2" y="7" width="12" height="3" rx="1" />
-              <rect x="2" y="12" width="12" height="3" rx="1" />
-            </svg>
-            Servers
-          </button>
+          <button class="nav-item active" data-tab="dashboard">Dashboard</button>
+          <button class="nav-item" data-tab="bots">Bots</button>
+          <button class="nav-item" data-tab="servers">Servers</button>
+          <button class="nav-item" data-tab="playground">Playground</button>
         </nav>
         <div class="sidebar-footer">
           <div class="system-stats">
             <div class="stat-row"><span>Bots</span><span id="s-bot-count">0</span></div>
             <div class="stat-row"><span>Memory</span><span id="s-memory">0 MB</span></div>
           </div>
+          <button id="create-bot-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px">
+            + New bot
+          </button>
         </div>
       </aside>
 
       <main id="main">
         <header id="topbar">
           <div id="page-title">Dashboard</div>
-          <div class="topbar-actions" id="topbar-actions"></div>
+          <div class="topbar-actions" id="topbar-actions">
+            <button id="top-refresh" class="btn">Refresh</button>
+          </div>
         </header>
 
         <div id="content">
+          <!-- DASHBOARD -->
           <section id="dashboard-tab" class="tab-content active">
             <div id="auth-banner" style="display: none"></div>
-            <div class="overview-grid">
+            <div id="login-card" class="card">
+              <h3>Log in</h3>
+              <p style="color: var(--text2); margin-bottom: 12px">
+                Create a bot via the UI — no terminal needed. Microsoft device-code flow happens in the
+                browser.
+              </p>
+              <form id="quick-login-form">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                  <input
+                    id="quick-username"
+                    placeholder="Minecraft username"
+                    required
+                    style="flex: 1; min-width: 160px"
+                  />
+                  <select id="quick-server" style="min-width: 140px"></select>
+                  <select id="quick-auth">
+                    <option value="microsoft">Microsoft</option>
+                    <option value="offline">Offline</option>
+                  </select>
+                  <button class="btn btn-primary" type="submit">Connect</button>
+                </div>
+                <p id="quick-login-hint" style="margin-top: 8px; font-size: 12px; color: var(--text2)"></p>
+              </form>
+            </div>
+            <div class="overview-grid" style="margin-top: 14px">
               <div class="overview-card">
                 <div class="overview-label">Active Bots</div>
                 <div class="overview-value" id="ov-bots">0</div>
@@ -104,27 +115,72 @@
                 <div class="overview-value" id="ov-uptime">0m</div>
               </div>
             </div>
-            <div class="section">
-              <div class="section-header">
-                <h3>Recent Activity</h3>
-              </div>
+            <div class="section" style="margin-top: 14px">
+              <div class="section-header"><h3>Recent Activity</h3></div>
               <div id="activity-feed" class="activity-feed">
                 <div class="empty-state">No activity yet</div>
               </div>
             </div>
           </section>
 
+          <!-- BOTS LIST -->
           <section id="bots-tab" class="tab-content">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 12px">
+              <button id="bots-new-btn" class="btn btn-primary">+ New bot</button>
+            </div>
             <div id="bots-grid" class="bots-grid"></div>
           </section>
 
+          <!-- SERVERS -->
           <section id="servers-tab" class="tab-content">
             <div id="servers-grid" class="servers-grid"></div>
+          </section>
+
+          <!-- PLAYGROUND / VIEWER -->
+          <section id="playground-tab" class="tab-content">
+            <div class="card">
+              <h3>3D Viewer</h3>
+              <p style="color: var(--text2); margin-bottom: 10px">
+                Prismarine viewer + third-person follow. Pick a bot on the Bots tab and click "Open".
+              </p>
+              <div
+                id="viewer-root"
+                style="
+                  height: 420px;
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  background: #0a0a0a;
+                  display: grid;
+                  place-items: center;
+                  color: var(--text2);
+                "
+              >
+                No bot selected — open from Bots.
+              </div>
+            </div>
+            <div class="card" style="margin-top: 12px">
+              <h3>Controls</h3>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                <button class="btn" data-viewer-action="forward">Forward</button>
+                <button class="btn" data-viewer-action="left">Left</button>
+                <button class="btn" data-viewer-action="back">Back</button>
+                <button class="btn" data-viewer-action="right">Right</button>
+                <button class="btn" data-viewer-action="jump">Jump</button>
+                <button class="btn" data-viewer-action="sneak">Sneak</button>
+                <button class="btn" data-viewer-action="sprint">Sprint</button>
+                <button class="btn btn-primary" data-viewer-action="stop">Stop</button>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 10px">
+                <input id="chat-input" placeholder="Send chat as selected bot…" style="flex: 1" />
+                <button id="chat-send" class="btn btn-primary">Send</button>
+              </div>
+            </div>
           </section>
         </div>
       </main>
     </div>
 
+    <!-- BOT MODAL (also serves as fullscreen stage) -->
     <div id="modal-overlay" class="modal-overlay" style="display: none">
       <div id="modal-container"></div>
     </div>
