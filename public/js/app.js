@@ -81,8 +81,9 @@ $('#menu-button')?.addEventListener('click', () =>
 /* ---------- Top bar ---------- */
 $('#top-refresh')?.addEventListener('click', () => navigate(state.view))
 $('#auth-refresh')?.addEventListener('click', () => loadDashboard())
-$('#create-bot-btn')?.addEventListener('click', () => navigate('bots'))
-$('#bots-new-btn')?.addEventListener('click', () => navigate('bots'))
+$('#create-bot-btn')?.addEventListener('click', () => { navigate('dashboard'); setTimeout(() => $('#quick-username')?.focus(), 50) })
+$('#bots-new-btn')?.addEventListener('click', () => { navigate('dashboard'); setTimeout(() => $('#quick-username')?.focus(), 50) })
+$('#servers-new-btn')?.addEventListener('click', () => openAddServer())
 
 function escHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -328,6 +329,53 @@ function fsChat(botId) {
 }
 
 /* ---------- SERVERS ---------- */
+function openAddServer() {
+  const overlay = $('#modal-overlay')
+  const container = $('#modal-container')
+  if (!overlay || !container) return
+  container.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Add server</h3>
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="srv-name" placeholder="e.g. My SMP" /></div>
+        <div class="form-group"><label class="form-label">Host</label><input class="form-input" id="srv-host" placeholder="mc.example.com" /></div>
+        <div class="form-group"><label class="form-label">Port</label><input class="form-input" id="srv-port" type="number" value="25565" /></div>
+        <div class="form-group"><label class="form-label">Version</label><input class="form-input" id="srv-version" value="1.21.4" /></div>
+        <p id="srv-error" style="color: var(--down); font-size: 12px; display: none"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="addServer()">Add</button>
+      </div>
+    </div>
+  `
+  overlay.style.display = 'flex'
+  const name = $('#srv-name')
+  if (name) name.focus()
+}
+
+function closeModal() {
+  const overlay = $('#modal-overlay')
+  if (overlay) overlay.style.display = 'none'
+}
+
+function addServer() {
+  const name = $('#srv-name')?.value.trim()
+  const host = $('#srv-host')?.value.trim()
+  const port = parseInt($('#srv-port')?.value, 10) || 25565
+  const version = $('#srv-version')?.value.trim() || '1.21.4'
+  const errEl = $('#srv-error')
+  if (!name || !host) {
+    if (errEl) { errEl.textContent = 'Name and host are required.'; errEl.style.display = 'block' }
+    return
+  }
+  socket.emit('server:add', { name, host, port, version })
+  closeModal()
+}
+
 async function loadServers() {
   const grid = $('#servers-grid')
   if (!grid) return
@@ -335,7 +383,7 @@ async function loadServers() {
     const data = await api('/api/servers')
     state.servers = data.servers || []
     if (!state.servers.length) {
-      grid.innerHTML = `<div class="card placeholder" style="grid-column: 1 / -1">No servers configured. The dashboard ships with DonutSMP + Hypixel defaults.</div>`
+      grid.innerHTML = `<div class="card placeholder" style="grid-column: 1 / -1">No servers configured.</div>`
       return
     }
     grid.innerHTML = state.servers.map(s => `
@@ -345,7 +393,7 @@ async function loadServers() {
             <div class="bot-card-name">${escHtml(s.name || s.id)}</div>
             <div class="bot-card-server">${escHtml(s.host)}:${s.port || 25565}</div>
           </div>
-          <button class="btn" onclick="socket.emit('server:remove',{id:'${escHtml(s.id)}'});loadServers()">Remove</button>
+          <button class="btn" onclick="socket.emit('server:remove',{id:'${escHtml(s.id)}'})">Remove</button>
         </div>
         ${s.version ? `<div class="bot-stat" style="margin-top: 8px"><div class="bot-stat-label">Version</div><div class="bot-stat-value">${escHtml(s.version)}</div></div>` : ''}
       </div>
@@ -403,6 +451,27 @@ socket.on('bot:created', data => {
 socket.on('bot:error', data => {
   toast(`Bot error: ${data.error}`, true)
   navigate('dashboard')
+})
+
+socket.on('server:added', () => {
+  toast('Server added')
+  loadServers()
+  loadDashboard()
+})
+
+socket.on('servers:updated', servers => {
+  state.servers = servers || state.servers
+  if (state.view === 'servers') loadServers()
+  if (state.view === 'dashboard') loadDashboard()
+})
+
+socket.on('server:removed', () => {
+  toast('Server removed')
+  loadServers()
+})
+
+socket.on('server:error', data => {
+  toast(data.error || 'Server error', true)
 })
 
 socket.on('connect_error', () => {

@@ -78,13 +78,19 @@ io.on('connection', socket => {
   })
 
   socket.on('server:add', data => {
-    const s = manager.addServer(data)
-    socket.emit('server:added', s)
+    try {
+      const s = manager.addServer(data)
+      io.emit('server:added', s)
+      io.emit('servers:updated', manager.getServers())
+    } catch (err) {
+      socket.emit('server:error', { error: err.message })
+    }
   })
 
   socket.on('server:remove', data => {
     manager.removeServer(data.id)
-    socket.emit('server:removed', { id: data.id })
+    io.emit('server:removed', { id: data.id })
+    io.emit('servers:updated', manager.getServers())
   })
 
   socket.on('disconnect', () => {
