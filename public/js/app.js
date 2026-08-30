@@ -120,6 +120,21 @@ function renderAll() {
   renderServers()
   updateOverview()
   updateSystemStats()
+  // Keep the quick-login server dropdown in sync with manager servers
+  const qs = document.getElementById('quick-server')
+  if (qs) {
+    const cur = qs.value
+    qs.innerHTML = state.servers
+      .map(s => `<option value="${s.id}">${esc(s.name)}</option>`)
+      .join('')
+    if (cur && state.servers.some(s => s.id === cur)) qs.value = cur
+  }
+}
+
+// Keep the dashboard quick-login server dropdown in sync with state.servers
+function updateQuickServers() {
+  const sel = document.getElementById('quick-server')
+  if (sel) sel.innerHTML = state.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
 }
 
 function updateOverview() {
