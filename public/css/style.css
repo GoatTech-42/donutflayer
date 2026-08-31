@@ -1414,3 +1414,31 @@ td b {
 .btn-danger:hover {
   background: rgba(239, 68, 68, 0.25);
 }
+
+/* Bot terminal (honest live-telemetry panel) */
+.bot-terminal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.term-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.term-label {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.term-stat b {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+}

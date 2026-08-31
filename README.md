@@ -1,35 +1,38 @@
-# DonutFlayer
+# DonutFlayer — Minecraft Bot Dashboard
 
-Minecraft bot dashboard with Mineflayer, Microsoft OAuth device code auth, and real-time chat.
+Web dashboard for managing Mineflayer bots: Microsoft auth, viewer, real-time controls, and live telemetry.
 
-## Features
-
-- Create and manage Mineflayer bots
-- Microsoft OAuth device code authentication (copy code + countdown on dashboard)
-- Real-time chat send/receive per bot
-- Bot actions: Mine, AFK, Explore, Mount, Stop
-- Server management (add/remove Minecraft servers)
-- Live activity feed
-- Dark theme UI
-
-## Setup
+## Run
 
 ```bash
 npm install
-node server.js
+npm start          # http://localhost:3000
 ```
-
-Dashboard runs on port 3000.
 
 ## Docker
 
 ```bash
 docker build -t donutflayer .
-docker run -d -p 3000:3000 donutflayer
+docker run -d --name donutflayer --restart unless-stopped \
+  -p 4202:3000 -v flayer-auth:/app/auth donutflayer
 ```
 
-## Stack
+The `flayer-auth` volume persists Microsoft auth tokens; `data/servers.json` persists custom server profiles.
 
-- Node.js + Express + Socket.IO
-- Mineflayer (bot engine)
-- Vanilla HTML/CSS/JS frontend
+## Features
+
+- **Connect a bot** — Microsoft device-code flow in-browser, or offline mode
+- **Servers** — add/edit/remove server profiles (DonutSMP + Hypixel seeded by default)
+- **Playground** — tap a bot for a fullscreen terminal: live position/health/food/dimension, mode controls (mine/AFK/explore/mount), WASD + jump/sneak/sprint, chat
+- **Auto-reconnect** — exponential backoff, kick/end/death handling
+
+## Architecture
+
+- `server.js` — Express + Socket.IO, REST endpoints, bot actions
+- `bot/manager.js` — bot lifecycle + server profile persistence
+- `bot/MineflayerBot.js` — Mineflayer wrapper (pathfinder, movements, behaviors)
+
+## Notes
+
+- Bots run `mineflayer-pathfinder` (plugin loaded via `pathfinder.pathfinder`)
+- Server profiles survive restarts via `data/servers.json` (defaults re-seeded each boot)

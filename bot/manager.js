@@ -4,6 +4,7 @@ const path = require('path')
 const MineflayerBot = require('./MineflayerBot')
 
 const SERVERS_FILE = process.env.SERVERS_FILE || path.join(__dirname, '..', 'data', 'servers.json')
+const BOTS_FILE = process.env.BOTS_FILE || path.join(__dirname, '..', 'data', 'bots.json')
 
 class BotManager {
   constructor(io) {
@@ -77,6 +78,22 @@ class BotManager {
     this._saveServers()
   }
 
+  updateServer(id, data) {
+    const existing = this.servers.get(id)
+    if (!existing) return null
+    const updated = {
+      ...existing,
+      name: String(data.name || existing.name).trim(),
+      host: String(data.host || existing.host).trim(),
+      port: parseInt(data.port, 10) || existing.port || 25565,
+      version: String(data.version || existing.version || '1.21.4').trim() || '1.21.4'
+    }
+    if (!updated.name || !updated.host) throw new Error('Name and host are required')
+    this.servers.set(id, updated)
+    this._saveServers()
+    return updated
+  }
+
   getBots() {
     return Array.from(this.bots.values())
   }
@@ -97,12 +114,14 @@ class BotManager {
         host: server.host,
         port: server.port,
         version: server.version,
-        serverName: server.name
+        serverName: server.name,
+        serverId: server.id
       },
       this.io
     )
 
     this.bots.set(id, bot)
+    this._saveBots()
     await bot.connect()
     return id
   }
@@ -112,12 +131,53 @@ class BotManager {
     if (bot) {
       bot.disconnect()
       this.bots.delete(id)
+      this._saveBots()
     }
   }
 
   botAction(id, action, params) {
     const bot = this.bots.get(id)
     if (bot) bot.action(action, params)
+  }
+
+  // Persist bot definitions so they auto-reconnect on restart.
+  // (auth tokens are stored in prismarine-auth's profiles folder, not here.)
+  _saveBots() {
+    try {
+      const defs = this.getBots().map(b => ({
+        id: b.id,
+        username: b.opts.username,
+        auth: b.opts.auth,
+        serverId: b.opts.serverId
+      }))
+      fs.mkdirSync(path.dirname(BOTS_FILE), { recursive: true })
+      fs.writeFileSync(BOTS_FILE, JSON.stringify(defs, null, 2))
+    } catch (e) {
+      console.warn('[Bots] failed to save bots.json:', e.message)
+    }
+  }
+
+  // Reconnect persisted bots on boot. async so it doesn't block startup.
+  async restoreBots() {
+    let restored = 0
+    try {
+      if (!fs.existsSync(BOTS_FILE)) return restored
+      const defs = JSON.parse(fs.readFileSync(BOTS_FILE, 'utf8'))
+      if (!Array.isArray(defs)) return restored
+      for (const d of defs) {
+        const server = this.servers.get(d.serverId)
+        if (!d.username || !server) continue
+        try {
+          await this.createBot({ username: d.username, auth: d.auth || 'microsoft', serverId: d.serverId })
+          restored++
+        } catch (e) {
+          console.warn(`[Bots] failed to restore ${d.username}:`, e.message)
+        }
+      }
+    } catch (e) {
+      console.warn('[Bots] failed to load bots.json:', e.message)
+    }
+    return restored
   }
 
   shutdown() {

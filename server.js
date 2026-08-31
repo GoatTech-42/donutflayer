@@ -93,6 +93,16 @@ io.on('connection', socket => {
     io.emit('servers:updated', manager.getServers())
   })
 
+  socket.on('server:update', data => {
+    try {
+      const s = manager.updateServer(data.id, data)
+      if (!s) return socket.emit('server:error', { error: 'Server not found' })
+      io.emit('servers:updated', manager.getServers())
+    } catch (err) {
+      socket.emit('server:error', { error: err.message })
+    }
+  })
+
   socket.on('disconnect', () => {
     console.log(`[Dashboard] Client disconnected: ${socket.id}`)
   })
@@ -101,6 +111,10 @@ io.on('connection', socket => {
 const PORT = process.env.PORT || 3000
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[Dashboard] http://0.0.0.0:${PORT}`)
+  // Reconnect bots that were running before a restart (best-effort, async).
+  manager.restoreBots().then(n => {
+    if (n) console.log(`[Bots] restored ${n} bot(s)`)
+  }).catch(() => {})
 })
 
 process.on('SIGTERM', () => {

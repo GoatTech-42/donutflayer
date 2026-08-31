@@ -8,7 +8,6 @@ const $  = (sel, root = document) => root.querySelector(sel)
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)]
 
 const fmtNum   = n => Number(n || 0).toLocaleString('en-US')
-const fmtMoney = () => '$0'
 const fmtPct   = n => (n > 0 ? '+' : '') + (n || 0).toFixed(1) + '%'
 
 function relative(date) {
@@ -307,16 +306,35 @@ function openBotFullscreen(b) {
         </div>
       </div>
       <div class="bot-fullscreen-right">
-        <div style="height: 360px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); display: grid; place-items: center; color: var(--text3)">
-          Prismarine viewer placeholder for ${escHtml(b.username)}
+        <div class="bot-terminal">
+          <div class="term-stat"><span class="term-label">Status</span><b id="fs-status">${escHtml(b.status || '—')}</b></div>
+          <div class="term-stat"><span class="term-label">Mode</span><b id="fs-mode">${escHtml(b.mode || 'idle')}</b></div>
+          <div class="term-stat"><span class="term-label">Position</span><b id="fs-pos">${b.position ? `${b.position.x}, ${b.position.y}, ${b.position.z}` : '—'}</b></div>
+          <div class="term-stat"><span class="term-label">Health</span><b id="fs-health">${b.health != null ? b.health : '—'}</b></div>
+          <div class="term-stat"><span class="term-label">Food</span><b id="fs-food">${b.food != null ? b.food : '—'}</b></div>
+          <div class="term-stat"><span class="term-label">Dimension</span><b id="fs-dim">${escHtml(b.dimension || '—')}</b></div>
+          <div class="term-stat"><span class="term-label">Blocks mined</span><b>${fmtNum(b.stats?.blocksMined || 0)}</b></div>
+          <div class="term-stat"><span class="term-label">Uptime</span><b>${formatTime(b.stats?.uptime || 0)}</b></div>
         </div>
-        <p style="margin-top: 8px; color: var(--text3); font-size: 12px">The prismarine viewer renders the world around this bot when enabled server-side.</p>
+        <p style="margin-top: 8px; color: var(--text3); font-size: 12px">Live telemetry from the bot. Values refresh as the bot reports health and position updates.</p>
       </div>
     </div>
   `
   document.body.appendChild(fs)
   const inp = $('#fs-chat-input')
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') fsChat(b.id) })
+  updateFullscreenState(b)
+}
+
+function updateFullscreenState(b) {
+  if (state.fullscreenBotId !== b.id) return
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
+  set('fs-status', b.status || '—')
+  set('fs-mode', b.mode || 'idle')
+  set('fs-pos', b.position ? `${b.position.x}, ${b.position.y}, ${b.position.z}` : '—')
+  set('fs-health', b.health != null ? b.health : '—')
+  set('fs-food', b.food != null ? b.food : '—')
+  set('fs-dim', b.dimension || '—')
 }
 
 function fsChat(botId) {
@@ -376,6 +394,48 @@ function addServer() {
   closeModal()
 }
 
+function openEditServer(id) {
+  const s = (state.servers || []).find(x => x.id === id)
+  if (!s) return
+  const overlay = $('#modal-overlay')
+  const container = $('#modal-container')
+  if (!overlay || !container) return
+  container.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Edit server</h3>
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="srv-name" value="${escHtml(s.name)}" /></div>
+        <div class="form-group"><label class="form-label">Host</label><input class="form-input" id="srv-host" value="${escHtml(s.host)}" /></div>
+        <div class="form-group"><label class="form-label">Port</label><input class="form-input" id="srv-port" type="number" value="${s.port || 25565}" /></div>
+        <div class="form-group"><label class="form-label">Version</label><input class="form-input" id="srv-version" value="${escHtml(s.version || '1.21.4')}" /></div>
+        <p id="srv-error" style="color: var(--down); font-size: 12px; display: none"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="updateServer('${escHtml(id)}')">Save</button>
+      </div>
+    </div>
+  `
+  overlay.style.display = 'flex'
+}
+
+function updateServer(id) {
+  const name = $('#srv-name')?.value.trim()
+  const host = $('#srv-host')?.value.trim()
+  const port = parseInt($('#srv-port')?.value, 10) || 25565
+  const version = $('#srv-version')?.value.trim() || '1.21.4'
+  const errEl = $('#srv-error')
+  if (!name || !host) {
+    if (errEl) { errEl.textContent = 'Name and host are required.'; errEl.style.display = 'block' }
+    return
+  }
+  socket.emit('server:update', { id, name, host, port, version })
+  closeModal()
+}
+
 async function loadServers() {
   const grid = $('#servers-grid')
   if (!grid) return
@@ -393,7 +453,10 @@ async function loadServers() {
             <div class="bot-card-name">${escHtml(s.name || s.id)}</div>
             <div class="bot-card-server">${escHtml(s.host)}:${s.port || 25565}</div>
           </div>
-          <button class="btn" onclick="socket.emit('server:remove',{id:'${escHtml(s.id)}'})">Remove</button>
+          <div style="display: flex; gap: 6px">
+            <button class="btn" onclick="openEditServer('${escHtml(s.id)}')">Edit</button>
+            <button class="btn" onclick="socket.emit('server:remove',{id:'${escHtml(s.id)}'})">Remove</button>
+          </div>
         </div>
         ${s.version ? `<div class="bot-stat" style="margin-top: 8px"><div class="bot-stat-label">Version</div><div class="bot-stat-value">${escHtml(s.version)}</div></div>` : ''}
       </div>
@@ -405,7 +468,8 @@ async function loadServers() {
 
 /* ---------- PLAYGROUND ---------- */
 function loadPlayground() {
-  // no-op — bot fullscreen renders into #bot-fullscreen via openBot()
+  // The playground opens via openBot() → openBotFullscreen(). Nothing to render
+  // here — the "pick a bot" placeholder lives in the static HTML.
 }
 
 /* ---------- SOCKET ---------- */
@@ -423,6 +487,10 @@ socket.on('bot:event', data => {
   switch (data.event) {
     case 'status': bot.status = data.data; break
     case 'mode':   bot.mode   = data.data; break
+    case 'health':
+      bot.health = data.data?.health ?? null
+      bot.food = data.data?.food ?? null
+      break
     case 'auth':
       if (data.data.status === 'auth_required') {
         showAuthBanner(data.data, bot.username)
@@ -439,6 +507,8 @@ socket.on('bot:event', data => {
       if (bot.chatLog.length > 200) bot.chatLog.shift()
       break
   }
+  // Live refresh of any open fullscreen terminal
+  if (typeof updateFullscreenState === 'function') updateFullscreenState(bot)
   if (typeof loadBots === 'function') loadBots()
   if (typeof loadDashboard === 'function') loadDashboard()
 })

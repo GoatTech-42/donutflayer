@@ -140,15 +140,6 @@ class MineflayerBot {
       this._emit('status', this.status)
       this._initMovements()
       this._startBehaviors()
-      // Prismarine viewer: attach a web viewer on demand (lazy, no hard dep failure)
-      try {
-        const viewer = require('prismarine-viewer').mineflayer
-        viewer(this.bot, { port: 0, firstPerson: false })
-        this._viewerReady = true
-        this._log('Viewer ready')
-      } catch (e) {
-        this._log(`Viewer not available: ${e.message}`, 'warn')
-      }
     })
 
     this.bot.on('kicked', reason => {
