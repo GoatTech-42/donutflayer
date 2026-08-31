@@ -209,22 +209,33 @@ function showAuthBanner(data, username) {
   const banner = $('#auth-banner')
   if (!banner) return
   banner.style.display = 'block'
+  // Error state (setup failed) — show inline error instead of empty code box
+  if (data.status === 'error') {
+    banner.innerHTML = `
+      <div class="card" style="border-color: rgba(220,60,60,0.5); background: rgba(220,60,60,0.08)">
+        <header><span class="eyebrow" style="color: #e85d5d">Microsoft auth failed</span><strong>${escHtml(username || 'Bot')}</strong>
+          <button class="btn-small" onclick="this.closest('.card').parentElement.style.display='none'">Dismiss</button></header>
+        <p style="margin-top: 8px; color: var(--text); font-size: 13px; word-break: break-word">${escHtml(data.error || 'Unknown error — check server logs')}</p>
+        <p style="margin-top: 6px; color: var(--text2); font-size: 12px">Delete this bot and try again, or use Offline if the server allows it.</p>
+      </div>`
+    return
+  }
   banner.innerHTML = `
     <div class="card" style="border-color: rgba(64,78,191,0.4); background: rgba(64,78,191,0.08)">
       <header>
         <span class="eyebrow">Microsoft auth required</span>
         <strong>${escHtml(username || 'Bot')}</strong>
-        <button class="btn-small" onclick="this.closest('.card').style.display='none'">Dismiss</button>
+        <button class="btn-small" onclick="this.closest('.card').parentElement.style.display='none'">Dismiss</button>
       </header>
-      <div style="margin-top: 10px; padding: 14px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer" onclick="navigator.clipboard?.writeText('${escHtml(data.code || '')}')">
+      <div style="margin-top: 10px; padding: 14px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer" onclick="navigator.clipboard?.writeText('${escHtml(data.code || '')}');toast('Code copied')">
         <div style="flex: 1">
           <div style="font-size: 10px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; font-weight: 600">Device code</div>
-          <div style="font-size: 28px; font-weight: 800; letter-spacing: 6px; font-family: var(--mono); color: var(--accent)">${escHtml(data.code || '')}</div>
+          <div style="font-size: 28px; font-weight: 800; letter-spacing: 6px; font-family: var(--mono); color: var(--accent)">${escHtml(data.code || '—')}</div>
         </div>
         <div style="font-size: 11px; color: var(--text3)">Click to copy</div>
       </div>
       <p style="margin-top: 10px; color: var(--text2); font-size: 13px; line-height: 1.6">
-        1. Open <a href="${escHtml(data.fullUrl || data.url || '#')}" target="_blank" rel="noopener" style="color: var(--accent); font-weight: 600">${escHtml(data.url || 'microsoft.com/devicelogin')}</a><br>
+        1. Open <a href="${escHtml(data.fullUrl || data.url || '#')}" target="_blank" rel="noopener" style="color: var(--accent); font-weight: 600">${escHtml(data.url || 'microsoft.com/link')}</a><br>
         2. Enter the code above · Expires in ${Math.round((data.expiresIn || 600) / 60)} min
       </p>
     </div>
@@ -232,8 +243,9 @@ function showAuthBanner(data, username) {
 }
 function hideAuthBanner() {
   const banner = $('#auth-banner')
-  if (banner) banner.style.display = 'none'
+  if (banner) { banner.style.display = 'none'; banner.innerHTML = '' }
 }
+function showAuthError(msg, username) { showAuthBanner({ status: 'error', error: msg }, username) }
 
 /* ---------- BOTS ---------- */
 async function loadBots() {
@@ -595,7 +607,7 @@ socket.on('init', data => {
 socket.on('bot:event', data => {
   const bot = (state.bots || []).find(b => b.id === data.botId)
   if (!bot) return
-  switch (data.event) {
+    switch (data.event) {
     case 'status': bot.status = data.data; break
     case 'mode':   bot.mode   = data.data; break
     case 'health':
@@ -609,6 +621,12 @@ socket.on('bot:event', data => {
       } else if (data.data.status === 'authenticated') {
         hideAuthBanner()
         toast(`Authenticated ${bot.username}`)
+      } else if (data.data.status === 'authenticating') {
+        toast(`Authenticating ${bot.username}… check banner for code`)
+      } else if (data.data.status === 'error') {
+        showAuthBanner(data.data, bot.username)
+        navigate('dashboard')
+        toast(data.data.error || 'Auth error', true)
       }
       break
     case 'chat':
@@ -642,6 +660,8 @@ socket.on('bot:removed', data => {
 
 socket.on('bot:error', data => {
   toast(`Bot error: ${data.error}`, true)
+  // surface as banner too so user sees it without opening console
+  showAuthError(data.error || 'Bot error', '')
   navigate('dashboard')
 })
 

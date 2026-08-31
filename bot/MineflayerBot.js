@@ -96,47 +96,39 @@ class MineflayerBot {
     }
 
     if (this.opts.auth === 'microsoft') {
-      const { Authflow, Titles } = require('prismarine-auth')
+      const { Titles } = require('prismarine-auth')
       this._authState = { status: 'authenticating', flow: 'microsoft' }
       this._emit('auth', this._authState)
-
-      // prismarine-auth v3 Authflow signature:
-      //   new Authflow(username, cacheDir, options, codeCallback)
-      // options must include `flow: 'live'` (device-code) or 'sisu'/'msal'.
-      // The device-code callback is the 4th positional arg, not an option key.
-      const flow = new Authflow(
-        this.opts.username,
-        AUTH_FOLDER,
-        { flow: 'live', authTitle: Titles.MinecraftJava },
-        code => {
-          this._authState = {
-            status: 'auth_required',
-            flow: 'microsoft',
-            code: code.user_code,
-            url: code.verification_uri,
-            fullUrl: `${code.verification_uri}?otc=${code.user_code}`,
-            expiresIn: code.expires_in,
-            message: code.message
-          }
-          this._emit('auth', this._authState)
-          this._log(`Auth required: Go to ${code.verification_uri} and enter ${code.user_code}`)
-          console.log(`[Auth] ${this.opts.username}: open ${code.verification_uri} and enter ${code.user_code}`)
-          // Also stash the last code so a reconnecting client that missed the
-          // socket burst can fetch it via GET /api/bots/:id/auth.
-          this._lastAuthCode = {
-            code: code.user_code,
-            url: code.verification_uri,
-            fullUrl: `${code.verification_uri}?otc=${code.user_code}`,
-            expiresIn: code.expires_in
-          }
+      this._log(`Starting Microsoft auth for ${this.opts.username}…`)
+      opts.auth = 'microsoft'
+      opts.profilesFolder = AUTH_FOLDER
+      opts.authTitle = Titles.MinecraftJava
+      opts.flow = 'live'
+      opts.onMsaCode = code => {
+        const c = code.user_code || code.userCode || ''
+        const uri = code.verification_uri || code.verificationUri || code.verification_uri_complete || 'https://www.microsoft.com/link'
+        const fUri = code.verification_uri_complete || (uri && c ? `${uri}?otc=${c}` : uri)
+        this._authState = {
+          status: 'auth_required',
+          flow: 'microsoft',
+          code: c,
+          url: uri,
+          fullUrl: fUri,
+          expiresIn: code.expires_in || code.expiresIn || 900,
+          message: code.message || `Go to ${uri} and enter ${c}`
         }
-      )
-      opts.auth = flow
+        this._lastAuthCode = { code: c, url: uri, fullUrl: fUri, expiresIn: this._authState.expiresIn, message: this._authState.message }
+        this._emit('auth', this._authState)
+        this._log(`Auth required: Go to ${uri} and enter ${c}`)
+        console.log(`[Auth] ${this.opts.username}: open ${uri} code ${c}`)
+      }
     } else {
       opts.auth = 'offline'
       opts.username = this.opts.username
     }
 
+    // Let mineflayer surface auth errors instead of hiding them
+    if (opts.hideErrors) delete opts.hideErrors
     this.bot = mineflayer.createBot(opts)
     // mineflayer-pathfinder v2 exports { pathfinder, Movements, goals } — the plugin
     // function is under `.pathfinder`, not the module itself.
@@ -169,6 +161,12 @@ class MineflayerBot {
 
     this.bot.on('error', err => {
       this._log(`Error: ${err.message}`, 'error')
+      console.error(`[${this.opts.username}] bot error:`, err)
+      // Surface auth failures to the banner so the user sees why no code appeared
+      if (/auth|microsoft|token|login/i.test(err.message)) {
+        this._authState = { status: 'error', flow: 'microsoft', error: err.message }
+        this._emit('auth', this._authState)
+      }
     })
 
     this.bot.on('message', jsonMsg => {
