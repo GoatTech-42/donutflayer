@@ -160,11 +160,26 @@ class MineflayerBot {
     })
 
     this.bot.on('error', err => {
-      this._log(`Error: ${err.message}`, 'error')
+      const raw = err.message || String(err)
+      // Make 403 actionable — it almost always means the MS account has no Java entitlement
+      // or the Xbox profile is missing/blocked (child account).
+      let msg = raw
+      if (/403/.test(raw)) {
+        msg = '403 Forbidden — this Microsoft account has no Minecraft Java licence or its Xbox profile is blocked. Sign in at https://www.microsoft.com/link with the account that owns Java (check https://www.minecraft.net/msaprofile and https://www.xbox.com), create an Xbox profile if needed, then delete this bot and try again. DonutSMP also allows Offline bots — switch Auth to Offline if you use a cracked name.'
+        // Clear the cached Xbox/MSA tokens so the next attempt re-prompts device code
+        try {
+          const fs = require('fs'); const path = require('path')
+          const hash = require('/app/node_modules/prismarine-auth/src/common/Util').createHash(this.opts.username)
+          for (const id of ['msal','live','sisu','xbl']) {
+            const f = path.join(AUTH_FOLDER, `${hash}_${id}-cache.json`)
+            if (fs.existsSync(f)) fs.unlinkSync(f)
+          }
+        } catch (_) {}
+      }
+      this._log(`Error: ${msg}`, 'error')
       console.error(`[${this.opts.username}] bot error:`, err)
-      // Surface auth failures to the banner so the user sees why no code appeared
-      if (/auth|microsoft|token|login/i.test(err.message)) {
-        this._authState = { status: 'error', flow: 'microsoft', error: err.message }
+      if (/auth|microsoft|token|login|403|forbidden/i.test(raw)) {
+        this._authState = { status: 'error', flow: 'microsoft', error: msg }
         this._emit('auth', this._authState)
       }
     })
