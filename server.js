@@ -41,6 +41,14 @@ app.get('/api/servers', (req, res) => {
   res.json({ servers: manager.getServers() })
 })
 
+app.get('/api/bots/:id/auth', (req, res) => {
+  const bot = manager.getBot(req.params.id)
+  if (!bot) return res.status(404).json({ error: 'Bot not found' })
+  const code = bot._lastAuthCode
+  if (!code) return res.status(404).json({ error: 'No pending auth code' })
+  res.json(code)
+})
+
 io.on('connection', socket => {
   console.log(`[Dashboard] Client connected: ${socket.id}`)
 

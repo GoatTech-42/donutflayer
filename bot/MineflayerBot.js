@@ -120,6 +120,15 @@ class MineflayerBot {
           }
           this._emit('auth', this._authState)
           this._log(`Auth required: Go to ${code.verification_uri} and enter ${code.user_code}`)
+          console.log(`[Auth] ${this.opts.username}: open ${code.verification_uri} and enter ${code.user_code}`)
+          // Also stash the last code so a reconnecting client that missed the
+          // socket burst can fetch it via GET /api/bots/:id/auth.
+          this._lastAuthCode = {
+            code: code.user_code,
+            url: code.verification_uri,
+            fullUrl: `${code.verification_uri}?otc=${code.user_code}`,
+            expiresIn: code.expires_in
+          }
         }
       )
       opts.auth = flow

@@ -108,6 +108,25 @@ function bindQuickLogin() {
     }
     socket.once('bot:created', unlock)
     socket.once('bot:error', unlock)
+    // Fallback: if the bot was created but the socket event was missed
+    // (race on reconnect), poll the auth code directly.
+    let polls = 0
+    const poll = setInterval(() => {
+      if (polls++ > 20) return clearInterval(poll)
+      const pending = (state.bots || []).find(b => b.authState?.status === 'authenticating')
+      if (!pending) return clearInterval(poll)
+      fetch(`/api/bots/${pending.id}/auth`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(code => {
+          if (code && code.code) {
+            clearInterval(poll)
+            showAuthBanner(code, pending.username)
+            navigate('dashboard')
+          }
+        })
+        .catch(() => {})
+    }, 1500)
+    setTimeout(() => clearInterval(poll), 35000)
   })
 }
 
