@@ -1191,6 +1191,20 @@ td b {
   font-size: 12px;
 }
 
+/* Compact buttons inside server/bot cards so they don't blow up the box */
+.server-card .bot-card-header .btn,
+.server-card .btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.server-card .btn-danger {
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
 /* Fullscreen playground */
 .bot-fullscreen {
   position: fixed;
@@ -1441,4 +1455,31 @@ td b {
   font-family: var(--mono);
   font-size: 14px;
   font-weight: 600;
+}
+
+/* Position tracker (2D top-down X/Z plot) */
+.pos-tracker-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.pos-tracker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.pos-tracker-head small {
+  color: var(--text3);
+  font-family: var(--mono);
+}
+#fs-pos-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
 }

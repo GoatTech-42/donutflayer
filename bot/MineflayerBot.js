@@ -90,7 +90,6 @@ class MineflayerBot {
       host: this.opts.host,
       port: this.opts.port,
       username: this.opts.username,
-      auth: this.opts.auth,
       version: this.opts.version,
       hideErrors: true,
       checkTimeoutInterval: 60000
@@ -101,10 +100,10 @@ class MineflayerBot {
       this._authState = { status: 'authenticating', flow: 'microsoft' }
       this._emit('auth', this._authState)
 
-      opts.auth = 'microsoft'
-      opts.profilesFolder = AUTH_FOLDER
-
-      const flow = new Authflow(this.opts.username, opts.profilesFolder, {
+      // prismarine-auth v3 requires the flow instance itself (not a string)
+      // when using Microsoft auth. Passing 'microsoft' as a string triggers
+      // "Missing 'flow' argument in options".
+      const flow = new Authflow(this.opts.username, AUTH_FOLDER, {
         authTitle: Titles.Minecraft,
         deviceCodeCallback: code => {
           this._authState = {
@@ -120,6 +119,11 @@ class MineflayerBot {
           this._log(`Auth required: Go to ${code.verification_uri} and enter ${code.user_code}`)
         }
       })
+      opts.auth = flow
+    } else {
+      opts.auth = 'offline'
+      // Give offline bots a persistent-ish UUID so they don't re-roll identity
+      opts.username = this.opts.username
     }
 
     this.bot = mineflayer.createBot(opts)

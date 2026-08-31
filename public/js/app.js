@@ -246,12 +246,21 @@ async function loadBots() {
           ${b.status === 'online'
             ? `<button class="btn" onclick="event.stopPropagation();socket.emit('bot:action',{id:'${escHtml(b.id)}',action:'stop'})">Stop</button>`
             : `<button class="btn btn-primary" onclick="event.stopPropagation();socket.emit('bot:action',{id:'${escHtml(b.id)}',action:'mine'})">Start</button>`}
+          <button class="btn btn-danger" onclick="event.stopPropagation();removeBot('${escHtml(b.id)}')">Delete</button>
         </div>
       </div>
     `).join('')
   } catch (e) {
     grid.innerHTML = `<div class="card placeholder">${escHtml(e.message)}</div>`
   }
+}
+
+function removeBot(id) {
+  const b = (state.bots || []).find(x => x.id === id)
+  if (!b) return
+  if (!confirm(`Delete bot "${b.username}"?`)) return
+  socket.emit('bot:remove', { id })
+  toast(`Deleting ${b.username}…`)
 }
 
 function openBot(botId) {
@@ -306,6 +315,10 @@ function openBotFullscreen(b) {
         </div>
       </div>
       <div class="bot-fullscreen-right">
+        <div class="pos-tracker-wrap">
+          <div class="pos-tracker-head"><span>Position tracker</span><small id="fs-pos-note">top-down (X/Z)</small></div>
+          <canvas id="fs-pos-canvas" width="520" height="180"></canvas>
+        </div>
         <div class="bot-terminal">
           <div class="term-stat"><span class="term-label">Status</span><b id="fs-status">${escHtml(b.status || '—')}</b></div>
           <div class="term-stat"><span class="term-label">Mode</span><b id="fs-mode">${escHtml(b.mode || 'idle')}</b></div>
@@ -316,7 +329,7 @@ function openBotFullscreen(b) {
           <div class="term-stat"><span class="term-label">Blocks mined</span><b>${fmtNum(b.stats?.blocksMined || 0)}</b></div>
           <div class="term-stat"><span class="term-label">Uptime</span><b>${formatTime(b.stats?.uptime || 0)}</b></div>
         </div>
-        <p style="margin-top: 8px; color: var(--text3); font-size: 12px">Live telemetry from the bot. Values refresh as the bot reports health and position updates.</p>
+        <p style="margin-top: 8px; color: var(--text3); font-size: 12px">Live telemetry from the bot. The position tracker plots X/Z as the bot moves; values refresh on health/position updates.</p>
       </div>
     </div>
   `
@@ -324,6 +337,14 @@ function openBotFullscreen(b) {
   const inp = $('#fs-chat-input')
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') fsChat(b.id) })
   updateFullscreenState(b)
+  // Initialize the position trail from existing bot state
+  state._posTrail = state._posTrail || {}
+  if (b.position) {
+    state._posTrail[b.id] = state._posTrail[b.id] || []
+    state._posTrail[b.id].push({ x: b.position.x, z: b.position.z, t: Date.now() })
+    if (state._posTrail[b.id].length > 200) state._posTrail[b.id].shift()
+  }
+  drawPosTracker(b)
 }
 
 function updateFullscreenState(b) {
@@ -335,6 +356,69 @@ function updateFullscreenState(b) {
   set('fs-health', b.health != null ? b.health : '—')
   set('fs-food', b.food != null ? b.food : '—')
   set('fs-dim', b.dimension || '—')
+  // Track + draw the position trail when a new position arrives
+  if (b.position) {
+    const trail = state._posTrail?.[b.id] || []
+    trail.push({ x: b.position.x, z: b.position.z, t: Date.now() })
+    if (trail.length > 200) trail.shift()
+    if (!state._posTrail) state._posTrail = {}
+    state._posTrail[b.id] = trail
+    drawPosTracker(b)
+  }
+}
+
+function drawPosTracker(b) {
+  const canvas = document.getElementById('fs-pos-canvas')
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  const W = canvas.width, H = canvas.height
+  ctx.clearRect(0, 0, W, H)
+  // dark bg + grid
+  ctx.fillStyle = 'rgba(10,10,12,0.9)'
+  ctx.fillRect(0, 0, W, H)
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'
+  ctx.lineWidth = 1
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+  for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+
+  const trail = state._posTrail?.[b.id] || []
+  if (!trail.length) {
+    ctx.fillStyle = '#6c7388'
+    ctx.font = '12px JetBrains Mono'
+    ctx.textAlign = 'center'
+    ctx.fillText('Waiting for position data…', W / 2, H / 2)
+    return
+  }
+  // compute bounds
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+  for (const p of trail) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z) }
+  const spanX = (maxX - minX) || 1, spanZ = (maxZ - minZ) || 1
+  const pad = 24
+  const scaleX = (W - pad * 2) / spanX, scaleZ = (H - pad * 2) / spanZ
+  const toXY = p => ({
+    x: pad + (p.x - minX) * scaleX,
+    y: pad + (p.z - minZ) * scaleZ
+  })
+
+  // trail polyline
+  ctx.strokeStyle = 'rgba(64,78,191,0.6)'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  trail.forEach((p, i) => {
+    const { x, y } = toXY(p)
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+  })
+  ctx.stroke()
+
+  // current position dot
+  const last = toXY(trail[trail.length - 1])
+  ctx.fillStyle = '#5563d1'
+  ctx.beginPath()
+  ctx.arc(last.x, last.y, 5, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
 }
 
 function fsChat(botId) {
@@ -449,13 +533,13 @@ async function loadServers() {
     grid.innerHTML = state.servers.map(s => `
       <div class="card server-card">
         <div class="bot-card-header">
-          <div>
+          <div style="min-width: 0">
             <div class="bot-card-name">${escHtml(s.name || s.id)}</div>
             <div class="bot-card-server">${escHtml(s.host)}:${s.port || 25565}</div>
           </div>
           <div style="display: flex; gap: 6px">
             <button class="btn" onclick="openEditServer('${escHtml(s.id)}')">Edit</button>
-            <button class="btn" onclick="socket.emit('server:remove',{id:'${escHtml(s.id)}'})">Remove</button>
+            <button class="btn btn-danger" onclick="event.stopPropagation();removeServer('${escHtml(s.id)}')">Remove</button>
           </div>
         </div>
         ${s.version ? `<div class="bot-stat" style="margin-top: 8px"><div class="bot-stat-label">Version</div><div class="bot-stat-value">${escHtml(s.version)}</div></div>` : ''}
@@ -464,6 +548,14 @@ async function loadServers() {
   } catch (e) {
     grid.innerHTML = `<div class="card placeholder">${escHtml(e.message)}</div>`
   }
+}
+
+function removeServer(id) {
+  const s = (state.servers || []).find(x => x.id === id)
+  if (!s) return
+  if (!confirm(`Remove server "${s.name}"?`)) return
+  socket.emit('server:remove', { id })
+  toast(`Removed ${s.name}`)
 }
 
 /* ---------- PLAYGROUND ---------- */
@@ -516,6 +608,17 @@ socket.on('bot:event', data => {
 socket.on('bot:created', data => {
   toast(`Bot created: ${data.username || data.id}`)
   navigate('bots')
+})
+
+socket.on('bot:removed', data => {
+  state.bots = (state.bots || []).filter(b => b.id !== data.id)
+  if (state.fullscreenBotId === data.id) {
+    const fs = document.getElementById('bot-fullscreen')
+    if (fs) fs.remove()
+    state.fullscreenBotId = null
+  }
+  loadBots()
+  loadDashboard()
 })
 
 socket.on('bot:error', data => {
